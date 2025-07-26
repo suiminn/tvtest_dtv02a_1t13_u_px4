@@ -1,0 +1,271 @@
+
+
+    デジタル放送映像復号プログラム実装研究資料
+
+                                            デジタル放送総合技術研究開発機構
+
+
+◆ 概要
+
+  デジタル放送映像復号プログラム実装研究資料は、パーソナルコンピュータ上の汎用
+  OS において、デジタル放送の映像復号を行うプログラムの実装を研究する目的で頒布
+  される研究資料である。
+
+  この資料は MPEG-2 映像を復号するための基本的な機能を実装している。
+  CAS 処理は実装されていないため、一般のテレビ放送の視聴に用いることはできない。
+
+
+◆ 注意事項
+
+  インターフェースの GUID が変更されたため、0.3.0 より前のバージョンをインストー
+  ルしていて 0.3.0 かそれより後のバージョンに更新する際には、一度前バージョンで
+  アンインストールを行い、ファイルの更新後に改めてインストールし直す必要がある。
+
+  このデコーダはまだ開発途上にあるので、インターフェースが頻繁に変更される可能
+  性がある。そのためインストールを行わないで利用する場合は、TVTest と
+  ITVTestVideoDecoder.h の整合をとらなければ正常に動作しない。
+
+
+◆ 試験環境
+
+  ・OS
+      Windows Vista/7/8/10/11
+
+  ・CPU
+      SSE2 対応 CPU
+      ※SSE2 非対応の CPU でも動作するはずだが、SIMD 拡張命令が一切使われない
+
+
+◆ 試験資料構築
+
+  Visual Studio 2019 のプロジェクトファイルを添付している。
+
+  src フォルダ内のソリューションファイル(.sln)を Visual Studio で開いてビルドす
+  ることができる。以下のソリューションファイルを添付している。
+
+  ・TVTestVideoDecoder.sln  Visual C++ 2019
+
+
+◆ 試験方法
+
+  TVTestVideoDecoder.ax を TVTest.exe と同じフォルダに配置すると、MPEG-2 デコー
+  ダとして選択できるようになる。
+
+  通常の DirectShow フィルタと同様に、regsvr32 でインストールすることも可能であ
+  る。インストール/アンインストールは管理者権限で行う必要がある。
+
+  インストール
+    regsvr32 TVTestVideoDecoder.ax
+
+  アンインストール
+    regsvr32 /u TVTestVideoDecoder.ax
+
+  インストールして使用するとレジストリの以下のキーに設定が保存される。
+    HKEY_CURRENT_USER\Software\DBCTRADO\TVTest DTV Video Decoder
+  以下のコマンドで設定を削除することができる。
+    rundll32 TVTestVideoDecoder.ax,Uninstall
+
+  インストールを行った場合においても、TVTest のフォルダに TVTestVideoDecoder.ax
+  が配置されていればそちらが優先して利用される。
+
+  TVTest のメニューの「フィルタのプロバティ」から「映像デコーダ」を選択すると、
+  設定を行うことができる。
+
+
+◆ 設定項目
+
+  フィルタのプロパティでいくつかの設定を行うことができる。
+
+  ・デコーダ
+    使用するデコーダを選択する。
+    この設定を反映させるには、プログラムの再起動かフィルタグラフ再初期化を行う。
+    選択できるデコーダは以下のいずれかである。
+
+    ・ソフトウェア
+      ソフトウェアデコーダを使用する。デコードは CPU によって行われる。
+
+    ・DXVA2 (EVR 利用時のみ)
+      DXVA2 (DirectX Video Acceleration 2) によるデコードを行う。
+      レンダラに EVR が選択されていて、GPU が MPEG-2 の VLD (Variable-Length
+      Decoding) モードに対応している必要がある。
+
+    ・D3D11 (Windows 8 以降)
+      Direct3D 11 によるデコードを行う。
+      GPU が MPEG-2 の VLD (Variable-Length Decoding) モードに対応している必要
+      がある。
+
+  ・インターレース解除を行う
+  ・インターレース解除を行わない
+    インターレース解除をこのデコーダフィルタによって行うかどうかを指定する。
+
+  ・インターレース解除方法
+    インターレース解除に用いるアルゴリズムを選択する。
+
+  ・プログレッシブ適応
+  ・テレシネ適応
+    フレームがプログレッシブである場合やテレシネが行われている時、インターレー
+    ス解除方法の設定を無視して Weave と Blend を用いる。
+
+  ・インターレースフラグを設定する
+    レンダラにフレームがインターレースであることを知らせる。インターレース解除
+    が行われるか、どのような方法により行われるかはレンダラに依存する。
+
+  ・色調補正
+    色調補正を行う。
+
+  ・スレッド数
+    デコードを行うスレッド数を指定する。
+    「自動」を選択すると、CPU のコア数に応じてスレッド数が決定される。
+    この設定はソフトウェアによるデコード時のみ有効である。
+
+  ・D3D11 遅延フレーム数
+    D3D11 でのデコード時に、デコードしたフレームをレンダラに送信するまでに何フ
+    レーム分遅延させるかを指定する。
+    この数が少な過ぎると、GPU の処理パフォーマンスが低下する。
+    この設定を反映させるには、プログラムの再起動かフィルタグラフ再初期化を行う。
+
+
+◆ デコーダ・インターフェースの利用
+
+  TVTestVideoDecoder.ax では以下の2種類のデコーダ・インターフェースを提供する。
+
+  ・ITVTestVideoDecoder
+      DirectShow フィルタ・デコーダ
+
+  ・ITVTestVideoFrameDecoder
+      単独デコーダ
+
+  これらのインターフェースは、ITVTestVideoDecoder.h で定義されている。
+  いずれのデコーダも、TVTestVideoDecoder_CreateInstance 関数を呼び出しインスタ
+  ンスを作成して利用する。
+
+  ITVTestVideoDecoder は、QueryInterface によって IBaseFilter を取得し
+  DirectShow フィルタとして利用する。
+
+  ITVTestVideoFrameDecoder からは、ITVTestVideoDecoderFrameCapture を実装するこ
+  とにより、デコードされた画像を取得できる。
+  ITVTestVideoFrameDecoder の利用の流れを以下に示す。
+  なお、エラー処理は省略している。
+
+    // デコードされたフレームを取得するクラスを実装する
+    class CMyFrameCapture : public ITVTestVideoDecoderFrameCapture
+    {
+      LONG m_RefCount = 0;
+
+    public:
+      // IUnknown を実装する
+      STDMETHODIMP_(ULONG) AddRef() override
+      {
+        return InterlockedIncrement(&m_RefCount);
+      }
+      STDMETHODIMP_(ULONG) Release() override
+      {
+        LONG Count = InterlockedDecrement(&m_RefCount);
+        if (Count == 0) delete this;
+        return Count;
+      }
+      STDMETHODIMP QueryInterface(REFIID riid, void **ppvObject) override
+      {
+        if (riid == __uuidof(ITVTestVideoDecoderFrameCapture)) {
+          *ppvObject = static_cast<ITVTestVideoDecoderFrameCapture*>(this);
+        } else if (riid == IID_IUnknown) {
+          *ppvObject = static_cast<IUnknown*>(this);
+        } else {
+          *ppvObject = nullptr;
+          return E_NOINTERFACE;
+        }
+        AddRef();
+        return S_OK;
+      }
+
+      // フレーム取得関数を実装する
+      STDMETHODIMP OnFrame(const TVTVIDEODEC_FrameInfo *pFrameInfo) override
+      {
+        if (pFrameInfo->Subtype == MEDIASUBTYPE_RGB32) {
+          // RGB 32-bit
+          // pFrameInfo->Buffer[0][(y * pFrameInfo->Pitch[0]) + (x * 4) + 0] == B
+          // pFrameInfo->Buffer[0][(y * pFrameInfo->Pitch[0]) + (x * 4) + 1] == G
+          // pFrameInfo->Buffer[0][(y * pFrameInfo->Pitch[0]) + (x * 4) + 2] == R
+        } else if (pFrameInfo->Subtype == MEDIASUBTYPE_IYUV) {
+          // YUV 4:2:0
+          // pFrameInfo->Buffer[0][(y * pFrameInfo->Pitch[0]) + x]             == Y
+          // pFrameInfo->Buffer[1][((y / 2) * pFrameInfo->Pitch[1]) + (x / 2)] == U
+          // pFrameInfo->Buffer[2][((y / 2) * pFrameInfo->Pitch[2]) + (x / 2)] == V
+        }
+        // フレーム取得関数がエラーを返すと、そこでデコードが中止される
+        return S_OK;
+      }
+    };
+
+    // ライブラリをロードし、インスタンス作成関数を取得する
+    HMODULE hLib = LoadLibraryW(L"TVTestVideoDecoder.ax");
+    auto pCreateInstance =
+      reinterpret_cast<decltype(TVTestVideoDecoder_CreateInstance) *>(
+        GetProcAddress(hLib, "TVTestVideoDecoder_CreateInstance"));
+
+    // デコーダのインスタンスを作成する
+    ITVTestVideoFrameDecoder *pDecoder;
+    pCreateInstance(IID_PPV_ARGS(&pDecoder));
+
+    // キャプチャ・インターフェースを設定する
+    // 取得する画像のフォーマットとして、以下のいずれかを指定できる
+    // MEDIASUBTYPE_RGB24 / MEDIASUBTYPE_RGB32 / MEDIASUBTYPE_IYUV / MEDIASUBTYPE_I420
+    CMyFrameCapture *pFrameCapture = new CMyFrameCapture;
+    pDecoder->SetFrameCapture(pFrameCapture, MEDIASUBTYPE_RGB32);
+
+    // デコーダを開く
+    pDecoder->Open(MEDIASUBTYPE_MPEG2_VIDEO);
+
+    while ( ... ) {
+      ...
+      // デコーダにストリームを入力する
+      // フレームがデコードされる度に、OnFrame が呼び出される
+      pDecoder->InputStream(PointerToData, SizeOfData);
+    }
+
+    // デコーダを閉じ、インターフェースを解放する
+    pDecoder->Close();
+    pDecoder->Release();
+
+    // ライブラリを解放する
+    FreeLibrary(hLib);
+
+
+◆ 現在の制限
+
+  ・DXVA2 のデコードは、ピクチャ構造がフレームでない場合に対応していない。
+
+
+◆ 使用ライブラリ
+
+  この資料は以下のライブラリを利用している。
+
+    DirectShow BaseClasses
+      Copyright (c) Microsoft Corporation
+      https://github.com/Microsoft/Windows-classic-samples/tree/master/Samples/Win7Samples/multimedia/directshow/baseclasses
+
+    libmpeg2 0.5.1
+      Copyright (C) 2000-2004 Michel Lespinasse
+      Copyright (C) 1999-2000 Aaron Holtzman
+
+  libmpeg2 には主に以下の改変を行っている。
+
+  ・スライスのデコードをマルチスレッドで行えるようにした。
+  ・SSE2 の IDCT 及び動き補償をイントリンシック関数で実装し直した。
+  ・上記に伴い IDCT 精度が変更されたために、オリジナルの IDCT アセンブラコード
+    は無効になっている。
+  ・バッファオーバーフローを防止するための境界チェックを追加した。
+  ・DXVA で用いるために必要なメンバを追加し、スライスのコールバック関数を登録で
+    きるようにした。
+
+
+◆ 特記事項
+
+  ・この資料は GPLv3 に従って頒布される。
+  ・この資料の使用及び使用不能によって生じたいかなる損害も補償しない。
+
+
+◆ 頒布元
+
+  https://github.com/DBCTRADO/TVTestVideoDecoder
+
